@@ -5,8 +5,11 @@ const morgan = require("morgan");
 const { init: initDB, Counter } = require("./db");
 
 const logger = morgan("tiny");
-
 const app = express();
+const expressWs = require("express-ws")(app);
+const clients = expressWs.getWss("/").clients;
+app.ws("/", function (ws, req) {});
+
 app.use(express.urlencoded({ extended: false }));
 app.use(express.json());
 app.use(cors());
@@ -26,6 +29,10 @@ app.post("/api/count", async (req, res) => {
     await Counter.destroy({
       truncate: true,
     });
+  }
+  //数据改变后将结果推送至客户端
+  for (let c of clients) {
+    c.send(await Counter.count());
   }
   res.send({
     code: 0,
